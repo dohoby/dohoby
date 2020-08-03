@@ -1,0 +1,17 @@
+@startuml
+
+class BeanDefinition {
+Object object
+getBean(String name)
+}
+
+
+class BeanFactory {
+Map<String,BeanDefinition> concurrentHashMap
+getBean(String name)
+registryBeanDefinition(String name,BeanDefinition beanDefinition);
+}
+
+
+
+@enduml

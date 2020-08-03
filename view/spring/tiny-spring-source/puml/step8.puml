@@ -1,0 +1,234 @@
+@startuml
+
+interface InvocationHandler {
+public Object invoke(Object proxy, Method method, Object[] args)
+}
+
+interface AopProxy {
+Object getProxy()
+}
+'-----------------------------------------------------------------------
+class JdkDanamicAopProxy{
+AdvisedSupport advised;
+public Object getProxy()
+public Object invoke(final Object proxy, final Method method, final Object[] args)
+}
+
+note top
+   @Override
+	public Object getProxy() {
+		return Proxy.newProxyInstance(getClass().getClassLoader(), new Class[] { advised.getTargetSource()
+				.getTargetClass() }, this);
+	}
+
+	@Override
+	public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
+		MethodInterceptor methodInterceptor = advised.getMethodInterceptor();
+		return methodInterceptor.invoke(new ReflectiveMethodInvocation(advised.getTargetSource().getTarget(), method,
+				args));
+	}
+end note
+
+AopProxy <|.. JdkDanamicAopProxy
+InvocationHandler <|.. JdkDanamicAopProxy
+JdkDanamicAopProxy --> ReflectiveMethodInvocation
+JdkDanamicAopProxy *-->AdvisedSupport
+
+
+'-----------------------------------------------------------------------
+class AdvisedSupport{
+MethodInterceptor methodIntecepter;
+TargetSource targetSource;
+}
+AdvisedSupport *-->MethodInterceptor
+
+
+'-----------------------------------------------------------------------
+class TargetSource {
+Class targetClass;
+Object target;
+}
+AdvisedSupport *-->TargetSource
+'-----------------------------------------------------------------------
+interface MethodInterceptor{
+Object invoke(MethodInvocation invocation)
+}
+MethodInterceptor -->MethodInvacation
+
+interface Interceptor{
+}
+MethodInterceptor --|>Interceptor
+Interceptor --|>Advice
+
+'-----------------------------------------------------------------------
+
+
+class ReflectiveMethodInvocation {
+Object target;
+Method method;
+Object[] args;
+public Object proceed()
+public AccessibleObject getStaticPart()
+public Object[] getArguments()
+public Method getMethod()
+}
+note top
+	@Override
+	public Object proceed() throws Throwable {
+		return method.invoke(target, args);
+	}
+end note
+ReflectiveMethodInvocation ..|>MethodInvacation
+
+'-----------------------------------------------------------------------
+interface Joinpoint{
+ Object proceed() throws Throwable;
+ Object getThis();
+ AccessibleObject getStaticPart();
+}
+
+interface Invocation{
+ Object[] getArguments();
+}
+
+interface MethodInvacation{
+Method getMethod();
+}
+
+MethodInvacation --|>Invocation
+Invocation --|>Joinpoint
+
+
+
+'-----------------------------------------------------------------------
+class TimerInterceptor{
+public Object invoke(MethodInvocation invocation)
+}
+TimerInterceptor --|>MethodInterceptor
+
+
+
+'-----------------------------------------------------------------------
+interface PointcutAdvisor{
+  Pointcut getPointcut();
+}
+
+Pointcut <--PointcutAdvisor
+Advisor <|--PointcutAdvisor
+
+'-----------------------------------------------------------------------
+
+interface Advisor{
+  Advice getAdvice();
+}
+
+'-----------------------------------------------------------------------
+interface Pointcut{
+  ClassFilter getClassFilter();
+  MethodMatcher getMethodMatcher();
+}
+
+Pointcut -->ClassFilter
+Pointcut -->MethodMatcher
+
+'-----------------------------------------------------------------------
+interface ClassFilter{
+ boolean matches(Class targetClass);
+}
+
+'-----------------------------------------------------------------------
+interface MethodMatcher{
+boolean matches(Method method, Class targetClass);
+}
+
+
+'-----------------------------------------------------------------------
+class AspectJExpressionPointcut{
+    private PointcutParser pointcutParser;
+	private String expression;
+	private PointcutExpression pointcutExpression;
+	public boolean matches(Class targetClass)
+	public boolean matches(Method method, Class targetClass)
+}
+
+
+Pointcut <|.. AspectJExpressionPointcut
+ClassFilter <|.. AspectJExpressionPointcut
+MethodMatcher <|.. AspectJExpressionPointcut
+
+'-----------------------------------------------------------------------
+class AspectJExpressionPointcutAdvisor{
+    private AspectJExpressionPointcut pointcut = new AspectJExpressionPointcut();
+    private Advice advice;
+}
+
+PointcutAdvisor <|.. AspectJExpressionPointcutAdvisor
+AspectJExpressionPointcutAdvisor *-->AspectJExpressionPointcut
+
+'-----------------------------------------------------------------------
+abstract class AbstractBeanFactory{
+	private Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<String, BeanDefinition>();
+	private final List<String> beanDefinitionNames = new ArrayList<String>();
+    private List<BeanPostProcessor> beanPostProcessors = new ArrayList<BeanPostProcessor>();
+
+getBean(String name)
+registryBeanDefinition(String name,BeanDefinition beanDefinition)
+abstract Object doCreateBean(BeanDefinition beanDefinition);
+protected void initializeBean(Object bean, String name) throws Exception
+}
+note bottom
+	@Override
+	public Object getBean(String name) throws Exception {
+		BeanDefinition beanDefinition = beanDefinitionMap.get(name);
+		if (beanDefinition == null) {
+			throw new IllegalArgumentException("No bean named " + name + " is defined");
+		}
+		Object bean = beanDefinition.getBean();
+		if (bean == null) {
+			bean = doCreateBean(beanDefinition);
+			initializeBean(bean, name);
+		}
+		return bean;
+	}
+
+	protected void initializeBean(Object bean, String name) throws Exception {
+		for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
+			bean = beanPostProcessor.postProcessBeforeInitialization(bean, name);
+		}
+
+		// TODO:call initialize method
+		for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
+            bean = beanPostProcessor.postProcessAfterInitialization(bean, name);
+		}
+	}
+end note
+'-----------------------------------------------------------------------
+interface BeanPostProcessor{
+	Object postProcessBeforeInitialization(Object bean, String beanName) throws Exception;
+	Object postProcessAfterInitialization(Object bean, String beanName) throws Exception;
+}
+
+AbstractBeanFactory *-->BeanPostProcessor
+
+'-----------------------------------------------------------------------
+interface Advice{
+}
+Advisor -->Advice
+
+'-----------------------------------------------------------------------
+class BeanInitializeLogger{
+	public Object postProcessBeforeInitialization(Object bean, String beanName) throws Exception {
+	public Object postProcessAfterInitialization(Object bean, String beanName) throws Exception {
+}
+BeanPostProcessor <|.. BeanInitializeLogger
+
+
+'-----------------------------------------------------------------------
+
+
+
+'-----------------------------------------------------------------------
+/'
+注释
+'/
+@enduml

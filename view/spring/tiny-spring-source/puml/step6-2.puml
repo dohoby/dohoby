@@ -1,0 +1,83 @@
+@startuml
+
+interface BeanFactory {
+getBean(String name)
+registryBeanDefinition(String name,BeanDefinition beanDefinition);
+}
+
+abstract class AbstractBeanFactory{
+Map<String,BeanDefinition> concurrentHashMap
+getBean(String name)
+registryBeanDefinition(String name,BeanDefinition beanDefinition)
+abstract Object doCreateBean(BeanDefinition beanDefinition);
+
+}
+
+
+
+class AutowireCapableBeanFactory{
+Object doCreateBean(BeanDefinition beanDefinition);
+createBeanInstance(BeanDefinition beanDefinition)
+applyPropertyValues(Bean bean,BeanDefinition beanDefinition)
+}
+
+class XmlBeanDefinitionReader{
+void loadBeanDefinitions(String location)
+protected void doLoadBeanDefinitions(InputStream inputStream)
+}
+'-----------------------------------------------------------------------
+
+interface ApplicationContext{
+
+}
+ApplicationContext --|> BeanFactory
+
+'-----------------------------------------------------------------------
+
+abstract AbstractApplicationContext{
+AbstractBeanFactory beanFactory
+void refresh()
+Object getBean(String name)
+
+}
+AbstractApplicationContext ..|> ApplicationContext
+AbstractApplicationContext o--> AbstractBeanFactory
+
+'-----------------------------------------------------------------------
+class ClassPathXmlApplicationContext{
+String configLocation
+void refresh()
+}
+
+
+AbstractApplicationContext <|-- ClassPathXmlApplicationContext
+
+note top
+	@Override
+	public void refresh() throws Exception {
+		XmlBeanDefinitionReader xmlBeanDefinitionReader = new XmlBeanDefinitionReader(new ResourceLoader());
+		xmlBeanDefinitionReader.loadBeanDefinitions(configLocation);
+		for (Map.Entry<String, BeanDefinition> beanDefinitionEntry : xmlBeanDefinitionReader.getRegistry().entrySet()) {
+			beanFactory.registerBeanDefinition(beanDefinitionEntry.getKey(), beanDefinitionEntry.getValue());
+		}
+	}
+
+    public ClassPathXmlApplicationContext(String configLocation) throws Exception {
+        this(configLocation, new AutowireCapableBeanFactory());
+    }
+
+    public ClassPathXmlApplicationContext(String configLocation, AbstractBeanFactory beanFactory) throws Exception {
+        super(beanFactory);
+        this.configLocation = configLocation;
+        refresh();
+    }
+end note
+
+ClassPathXmlApplicationContext -->XmlBeanDefinitionReader
+ClassPathXmlApplicationContext -->AutowireCapableBeanFactory
+
+'-----------------------------------------------------------------------
+/'
+注释
+'/
+@enduml

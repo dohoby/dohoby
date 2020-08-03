@@ -1,0 +1,63 @@
+@startuml
+
+class BeanDefinition {
+Object bean
+Class  beanClass
+String beanClassName
+PropertyValues propertyValues
+getBean(String name)
+void setBean(Object bean)
+void setBeanClassName(String beanClassName)
+void setPropertyValues(PropertyValues propertyValues)
+}
+
+
+interface BeanFactory {
+getBean(String name)
+registryBeanDefinition(String name,BeanDefinition beanDefinition);
+}
+
+abstract class AbstractBeanFactory{
+Map<String,BeanDefinition> concurrentHashMap
+getBean(String name)
+registryBeanDefinition(String name,BeanDefinition beanDefinition)
+abstract Object doCreateBean(BeanDefinition beanDefinition);
+
+}
+
+BeanFactory <|-- AbstractBeanFactory
+
+class AutowireCapableBeanFactory{
+Object doCreateBean(BeanDefinition beanDefinition);
+createBeanInstance(BeanDefinition beanDefinition)
+applyPropertyValues(Bean bean,BeanDefinition beanDefinition)
+}
+
+note left
+createBeanInstance:
+Object bean = beanDefinition.getBeanClass().newInstance();
+
+applyPropertyValues:
+protected void applyPropertyValues(Object bean, BeanDefinition mbd) throws Exception {
+		for (PropertyValue propertyValue : mbd.getPropertyValues().getPropertyValues()) {
+			Field declaredField = bean.getClass().getDeclaredField(propertyValue.getName());
+			declaredField.setAccessible(true);
+			declaredField.set(bean, propertyValue.getValue());
+		}
+	}
+end note
+
+AbstractBeanFactory <|-- AutowireCapableBeanFactory
+
+class PropertyValues{
+List<PropertyValue> propertyValueArrayList
+}
+
+class PropertyValue{
+String name
+Object value
+}
+
+
+
+@enduml

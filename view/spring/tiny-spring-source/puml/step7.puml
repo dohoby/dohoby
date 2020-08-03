@@ -1,0 +1,115 @@
+@startuml
+
+interface InvocationHandler {
+public Object invoke(Object proxy, Method method, Object[] args)
+}
+
+interface AopProxy {
+Object getProxy()
+}
+'-----------------------------------------------------------------------
+class JdkDanamicAopProxy{
+AdvisedSupport advised;
+public Object getProxy()
+public Object invoke(final Object proxy, final Method method, final Object[] args)
+}
+
+note right
+   @Override
+	public Object getProxy() {
+		return Proxy.newProxyInstance(getClass().getClassLoader(), new Class[] { advised.getTargetSource()
+				.getTargetClass() }, this);
+	}
+
+	@Override
+	public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
+		MethodInterceptor methodInterceptor = advised.getMethodInterceptor();
+		return methodInterceptor.invoke(new ReflectiveMethodInvocation(advised.getTargetSource().getTarget(), method,
+				args));
+	}
+end note
+
+AopProxy <|.. JdkDanamicAopProxy
+InvocationHandler <|.. JdkDanamicAopProxy
+JdkDanamicAopProxy --> ReflectiveMethodInvocation
+JdkDanamicAopProxy *-->AdvisedSupport
+
+
+'-----------------------------------------------------------------------
+class AdvisedSupport{
+MethodInterceptor methodIntecepter;
+TargetSource targetSource;
+}
+AdvisedSupport *-->MethodInterceptor
+
+
+'-----------------------------------------------------------------------
+class TargetSource {
+Class targetClass;
+Object target;
+}
+AdvisedSupport *-->TargetSource
+'-----------------------------------------------------------------------
+interface MethodInterceptor{
+Object invoke(MethodInvocation invocation)
+}
+MethodInterceptor -->MethodInvacation
+
+'-----------------------------------------------------------------------
+
+
+class ReflectiveMethodInvocation {
+Object target;
+Method method;
+Object[] args;
+public Object proceed()
+public AccessibleObject getStaticPart()
+public Object[] getArguments()
+public Method getMethod()
+}
+note right
+	@Override
+	public Object proceed() throws Throwable {
+		return method.invoke(target, args);
+	}
+end note
+ReflectiveMethodInvocation ..|>MethodInvacation
+
+'-----------------------------------------------------------------------
+interface Joinpoint{
+ Object proceed() throws Throwable;
+ Object getThis();
+ AccessibleObject getStaticPart();
+}
+
+interface Invocation{
+ Object[] getArguments();
+}
+
+interface MethodInvacation{
+Method getMethod();
+}
+
+MethodInvacation --|>Invocation
+Invocation --|>Joinpoint
+
+
+
+'-----------------------------------------------------------------------
+class TimerInterceptor{
+public Object invoke(MethodInvocation invocation)
+}
+TimerInterceptor --|>MethodInterceptor
+
+'-----------------------------------------------------------------------
+
+
+'-----------------------------------------------------------------------
+
+
+
+'-----------------------------------------------------------------------
+/'
+注释
+'/
+@enduml

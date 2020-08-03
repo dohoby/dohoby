@@ -1,0 +1,137 @@
+@startuml
+
+
+'-----------------------------------------------------------------------
+abstract class AbstractBeanFactory{
+	private Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<String, BeanDefinition>();
+	private final List<String> beanDefinitionNames = new ArrayList<String>();
+    private List<BeanPostProcessor> beanPostProcessors = new ArrayList<BeanPostProcessor>();
+
+    getBean(String name)
+    registryBeanDefinition(String name,BeanDefinition beanDefinition)
+    abstract Object doCreateBean(BeanDefinition beanDefinition);
+    protected void initializeBean(Object bean, String name) throws Exception
+	protected Object createBeanInstance(BeanDefinition beanDefinition) throws Exception {
+	public void preInstantiateSingletons() throws Exception {
+	public void addBeanPostProcessor(BeanPostProcessor beanPostProcessor) throws Exception {
+	public List getBeansForType(Class type) throws Exception {
+
+}
+note left
+	@Override
+	public Object getBean(String name) throws Exception {
+		BeanDefinition beanDefinition = beanDefinitionMap.get(name);
+		if (beanDefinition == null) {
+			throw new IllegalArgumentException("No bean named " + name + " is defined");
+		}
+		Object bean = beanDefinition.getBean();
+		if (bean == null) {
+			bean = doCreateBean(beanDefinition);
+			initializeBean(bean, name);
+		}
+		return bean;
+	}
+
+	protected void initializeBean(Object bean, String name) throws Exception {
+		for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
+			bean = beanPostProcessor.postProcessBeforeInitialization(bean, name);
+		}
+
+		// TODO:call initialize method
+		for (BeanPostProcessor beanPostProcessor : beanPostProcessors) {
+            bean = beanPostProcessor.postProcessAfterInitialization(bean, name);
+		}
+	}
+
+	protected Object createBeanInstance(BeanDefinition beanDefinition) throws Exception {
+		return beanDefinition.getBeanClass().newInstance();
+	}
+
+	public void registerBeanDefinition(String name, BeanDefinition beanDefinition) throws Exception {
+		beanDefinitionMap.put(name, beanDefinition);
+		beanDefinitionNames.add(name);
+	}
+
+	public void preInstantiateSingletons() throws Exception {
+		for (Iterator it = this.beanDefinitionNames.iterator(); it.hasNext();) {
+			String beanName = (String) it.next();
+			getBean(beanName);
+		}
+	}
+
+	protected Object doCreateBean(BeanDefinition beanDefinition) throws Exception {
+		Object bean = createBeanInstance(beanDefinition);
+		beanDefinition.setBean(bean);
+		applyPropertyValues(bean, beanDefinition);
+		return bean;
+	}
+	public void addBeanPostProcessor(BeanPostProcessor beanPostProcessor) throws Exception {
+		this.beanPostProcessors.add(beanPostProcessor);
+	}
+
+	public List getBeansForType(Class type) throws Exception {
+		List beans = new ArrayList<Object>();
+		for (String beanDefinitionName : beanDefinitionNames) {
+			if (type.isAssignableFrom(beanDefinitionMap.get(beanDefinitionName).getBeanClass())) {
+				beans.add(getBean(beanDefinitionName));
+			}
+		}
+		return beans;
+	}
+end note
+'-----------------------------------------------------------------------
+interface BeanPostProcessor{
+	Object postProcessBeforeInitialization(Object bean, String beanName) throws Exception;
+	Object postProcessAfterInitialization(Object bean, String beanName) throws Exception;
+}
+
+AbstractBeanFactory *-->BeanPostProcessor
+
+'-----------------------------------------------------------------------
+abstract class AbstractApplicationContext{
+AbstractBeanFactory beanFactory
+void refresh()
+Object getBean(String name)
+	protected void registerBeanPostProcessors(AbstractBeanFactory beanFactory) throws Exception {
+
+}
+note bottom
+	public void refresh() throws Exception {
+		loadBeanDefinitions(beanFactory);
+		registerBeanPostProcessors(beanFactory);
+		onRefresh();
+	}
+
+	protected abstract void loadBeanDefinitions(AbstractBeanFactory beanFactory) throws Exception;
+
+	protected void registerBeanPostProcessors(AbstractBeanFactory beanFactory) throws Exception {
+		List beanPostProcessors = beanFactory.getBeansForType(BeanPostProcessor.class);
+		for (Object beanPostProcessor : beanPostProcessors) {
+			beanFactory.addBeanPostProcessor((BeanPostProcessor) beanPostProcessor);
+		}
+	}
+
+	protected void onRefresh() throws Exception{
+        beanFactory.preInstantiateSingletons();
+    }
+
+    @Override
+    public Object getBean(String name) throws Exception {
+        return beanFactory.getBean(name);
+    }
+end note
+AbstractApplicationContext o--> AbstractBeanFactory
+
+'-----------------------------------------------------------------------
+class BeanInitializeLogger{
+	public Object postProcessBeforeInitialization(Object bean, String beanName) throws Exception {
+	public Object postProcessAfterInitialization(Object bean, String beanName) throws Exception {
+}
+BeanPostProcessor <|.. BeanInitializeLogger
+
+
+'-----------------------------------------------------------------------
+/'
+注释
+'/
+@enduml

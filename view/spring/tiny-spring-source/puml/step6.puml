@@ -1,0 +1,199 @@
+@startuml
+
+class BeanDefinition {
+Object bean
+Class  beanClass
+String beanClassName
+PropertyValues propertyValues
+getBean(String name)
+void setBean(Object bean)
+void setBeanClassName(String beanClassName)
+void setPropertyValues(PropertyValues propertyValues)
+}
+
+'-----------------------------------------------------------------------
+
+interface BeanFactory {
+getBean(String name)
+registryBeanDefinition(String name,BeanDefinition beanDefinition);
+}
+
+abstract class AbstractBeanFactory{
+Map<String,BeanDefinition> concurrentHashMap
+getBean(String name)
+registryBeanDefinition(String name,BeanDefinition beanDefinition)
+abstract Object doCreateBean(BeanDefinition beanDefinition);
+
+}
+
+BeanFactory <|.. AbstractBeanFactory
+'-----------------------------------------------------------------------
+
+
+class AutowireCapableBeanFactory{
+Object doCreateBean(BeanDefinition beanDefinition);
+createBeanInstance(BeanDefinition beanDefinition)
+applyPropertyValues(Bean bean,BeanDefinition beanDefinition)
+}
+
+AbstractBeanFactory <|-- AutowireCapableBeanFactory
+
+note bottom
+createBeanInstance:
+Object bean = beanDefinition.getBeanClass().newInstance();
+
+applyPropertyValues:
+	protected void applyPropertyValues(Object bean, BeanDefinition mbd) throws Exception {
+		for (PropertyValue propertyValue : mbd.getPropertyValues().getPropertyValues()) {
+			Field declaredField = bean.getClass().getDeclaredField(propertyValue.getName());
+			declaredField.setAccessible(true);
+			Object value = propertyValue.getValue();
+			if (value instanceof BeanReference) {
+				BeanReference beanReference = (BeanReference) value;
+				value = getBean(beanReference.getName());
+			}
+			declaredField.set(bean, value);
+		}
+	}
+end note
+
+'-----------------------------------------------------------------------
+class PropertyValues{
+List<PropertyValue> propertyValueArrayList
+}
+
+class PropertyValue{
+String name
+Object value
+}
+
+
+PropertyValues *--> PropertyValue
+BeanDefinition o--> PropertyValues
+AbstractBeanFactory *--> BeanDefinition
+
+'-----------------------------------------------------------------------
+
+interface BeanDefinitionReader{
+void loadBeanDefinitions(String location)
+}
+
+class AbstractBeanDefinitionReader{
+Map<String,BeanDefinition> registry
+ResourceLoader resourceLoader
+protected AbstractBeanDefinitionReader(ResourceLoader resourceLoader)
+}
+
+AbstractBeanDefinitionReader *--> BeanDefinition
+BeanDefinitionReader <|.. AbstractBeanDefinitionReader
+
+'-----------------------------------------------------------------------
+
+
+class XmlBeanDefinitionReader{
+void loadBeanDefinitions(String location)
+protected void doLoadBeanDefinitions(InputStream inputStream)
+}
+
+
+note top
+	@Override
+	public void loadBeanDefinitions(String location) throws Exception {
+		InputStream inputStream = getResourceLoader().getResource(location).getInputStream();
+		doLoadBeanDefinitions(inputStream);
+	}
+end note
+AbstractBeanDefinitionReader <|-- XmlBeanDefinitionReader
+
+'-----------------------------------------------------------------------
+
+
+class ResourceLoader{
+void getResource(String location)
+}
+
+note bottom
+    public Resource getResource(String location){
+        URL resource = this.getClass().getClassLoader().getResource(location);
+        return new UrlResource(resource);
+    }
+end note
+
+interface Resource{
+    InputStream getInputStream() throws IOException;
+}
+
+
+class UrlResource{
+    private final URL url;
+    UrlResource(URL url)
+    void getInputStream()
+}
+
+Resource <|.. UrlResource
+ResourceLoader --> UrlResource
+AbstractBeanDefinitionReader *--> ResourceLoader
+
+'-----------------------------------------------------------------------
+
+class BeanReference{
+    String name
+    Object bean
+}
+
+BeanDefinition o-->BeanReference
+
+'-----------------------------------------------------------------------
+
+interface ApplicationContext{
+
+}
+ApplicationContext --|> BeanFactory
+
+'-----------------------------------------------------------------------
+
+abstract AbstractApplicationContext{
+AbstractBeanFactory beanFactory
+void refresh()
+Object getBean(String name)
+
+}
+AbstractApplicationContext ..|> ApplicationContext
+AbstractApplicationContext o--> AbstractBeanFactory
+
+'-----------------------------------------------------------------------
+class ClassPathXmlApplicationContext{
+String configLocation
+void refresh()
+}
+
+
+AbstractApplicationContext <|-- ClassPathXmlApplicationContext
+
+note top
+	@Override
+	public void refresh() throws Exception {
+		XmlBeanDefinitionReader xmlBeanDefinitionReader = new XmlBeanDefinitionReader(new ResourceLoader());
+		xmlBeanDefinitionReader.loadBeanDefinitions(configLocation);
+		for (Map.Entry<String, BeanDefinition> beanDefinitionEntry : xmlBeanDefinitionReader.getRegistry().entrySet()) {
+			beanFactory.registerBeanDefinition(beanDefinitionEntry.getKey(), beanDefinitionEntry.getValue());
+		}
+	}
+
+    public ClassPathXmlApplicationContext(String configLocation) throws Exception {
+        this(configLocation, new AutowireCapableBeanFactory());
+    }
+
+
+    public ClassPathXmlApplicationContext(String configLocation, AbstractBeanFactory beanFactory) throws Exception {
+        super(beanFactory);
+        this.configLocation = configLocation;
+        refresh();
+    }
+end note
+
+'-----------------------------------------------------------------------
+/'
+注释
+'/
+@enduml
